@@ -4,16 +4,19 @@ const axios = require('axios');
 const parse = require('node-html-parser').parse;
 const heroesAPIKey = '10217066373954273'
 const app = express();
+const url = require('url');
 const PORT = process.env.PORT || 5000
 
 let heroes = [];
 let heroesById = {};
 
 // Allows to execute Promises sequentially
-const mapSeries = async (iterable, action) => {
+const executeSequentiallyWith = async (iterable, action, onResult) => {
   const results = [];
   for (const x of iterable) {
-    results.push(await action(x));
+    const result = await action(x);
+    if (onResult) onResult(result);
+    results.push(result);
   }
   return results;
 }
@@ -39,12 +42,18 @@ const fetchHeroeDetails = async (heroId) => {
 }
 
 const fetchAllHeroesDetails = async () => {
+  heroes = [];
+  heroesById = {};
+
   try {
     const heroIdList = await fetchHeroIds();
     // we have to get the heroes one after the other, otherwise the API will be overloaded and might not respond well.
-    const heroesRaw = await mapSeries(heroIdList, fetchHeroeDetails);
-    heroes = heroesRaw.filter(hero => hero !== null)
-    heroes.forEach(h => heroesById[h.id] = h);
+    await executeSequentiallyWith(heroIdList, fetchHeroeDetails, h => {
+      if (h) {
+        heroes.push(h);
+        heroesById[h.id] = h
+      }
+    });
     console.log('Got all the heroes !')
   } catch (e) {
     console.error(e)
@@ -53,8 +62,25 @@ const fetchAllHeroesDetails = async () => {
 fetchAllHeroesDetails();
 
 app.use(cors());
+app.get('/', (req, res) => res.redirect('/heroes'));
 app.get('/heroes', (req, res) => {
-  res.json(heroes);
+  let jsonData = {};
+  const queryParams = url.parse(req.url, true).query;
+  const heroIds = queryParams.heroIds;
+  const limit = parseInt(queryParams.limit) || heroes.length;
+  const offset = parseInt(queryParams.offset) || 0;
+  
+  if (heroIds) {
+    jsonData = heroIds.split(',').map(id => heroesById[id]).filter(h => !!h);
+  } else {
+    jsonData = heroes;
+  }
+
+  if (!isNaN(limit) && !isNaN(offset)) {
+    jsonData = jsonData.slice(offset, limit);
+  }
+
+  res.json(jsonData);
 });
 app.get('/heroes/:id', (req, res) => {
   const foundHero = heroesById[req.params.id];
@@ -64,4 +90,4 @@ app.get('/heroes/:id', (req, res) => {
     res.sendStatus(404);
   }
 });
-app.listen(PORT, () => console.log(`App listening on port${PORT}`));
+app.listen(PORT, () => console.log(`App listening on port ${PORT}`));
