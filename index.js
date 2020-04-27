@@ -6,6 +6,8 @@ const heroesAPIKey = '10217066373954273'
 const app = express();
 const port = 3000;
 
+let heroes = [];
+let heroesById = {};
 
 // Allows to execute Promises sequentially
 const mapSeries = async (iterable, action) => {
@@ -36,31 +38,30 @@ const fetchHeroeDetails = async (heroId) => {
     .catch(error => { console.error(error); return null });
 }
 
-const run = async () => {
+const fetchAllHeroesDetails = async () => {
   try {
     const heroIdList = await fetchHeroIds();
     // we have to get the heroes one after the other, otherwise the API will be overloaded and might not respond well.
     const heroesRaw = await mapSeries(heroIdList.slice(0, 10), fetchHeroeDetails);
-    const heroes = heroesRaw.filter(hero => hero !== null)
-    const heroesById = {};
+    heroes = heroesRaw.filter(hero => hero !== null)
     heroes.forEach(h => heroesById[h.id] = h);
-
-    console.log('Got all the heroes, starting server...')
-    app.use(cors());
-    app.get('/heroes', (req, res) => {
-      res.json(heroes);
-    });
-    app.get('/heroes/:id', (req, res) => {
-      const foundHero = heroesById[req.params.id];
-      if (foundHero) {
-        res.json(foundHero);
-      } else {
-        res.sendStatus(404);
-      }
-    });
-    app.listen(port, () => console.log(`Example app listening on port${port}`));
+    console.log('Got all the heroes !')
   } catch (e) {
     console.error(e)
   }
 }
-run();
+fetchAllHeroesDetails();
+
+app.use(cors());
+app.get('/heroes', (req, res) => {
+  res.json(heroes);
+});
+app.get('/heroes/:id', (req, res) => {
+  const foundHero = heroesById[req.params.id];
+  if (foundHero) {
+    res.json(foundHero);
+  } else {
+    res.sendStatus(404);
+  }
+});
+app.listen(port, () => console.log(`App listening on port${port}`));
