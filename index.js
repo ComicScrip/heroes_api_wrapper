@@ -4,7 +4,7 @@ const axios = require('axios');
 const parse = require('node-html-parser').parse;
 const heroesAPIKey = '10217066373954273'
 const app = express();
-const port = 3000;
+const PORT = process.env.PORT || 5000
 
 let heroes = [];
 let heroesById = {};
@@ -64,4 +64,4 @@ app.get('/heroes/:id', (req, res) => {
     res.sendStatus(404);
   }
 });
-app.listen(port, () => console.log(`App listening on port${port}`));
+app.listen(PORT, () => console.log(`App listening on port${PORT}`));
