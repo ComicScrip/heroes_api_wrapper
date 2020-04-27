@@ -42,7 +42,7 @@ const fetchAllHeroesDetails = async () => {
   try {
     const heroIdList = await fetchHeroIds();
     // we have to get the heroes one after the other, otherwise the API will be overloaded and might not respond well.
-    const heroesRaw = await mapSeries(heroIdList.slice(0, 10), fetchHeroeDetails);
+    const heroesRaw = await mapSeries(heroIdList, fetchHeroeDetails);
     heroes = heroesRaw.filter(hero => hero !== null)
     heroes.forEach(h => heroesById[h.id] = h);
     console.log('Got all the heroes !')
